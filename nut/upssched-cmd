@@ -1,0 +1,27 @@
+ case $1 in
+        gone)
+                 logger -t upssched-cmd "The UPS has been gone for awhile"
+                  ;;
+        replacebat)
+                 logger -t upssched-cmd "The UPS needs its battery replaced"
+                  ;;
+        lowbat)
+                 logger -t upssched-cmd "The UPS has LOW BAT"
+                  ;;
+        onbatt)
+                 logger -t upssched-cmd "The UPS is ON BAT"
+                  ;;
+        online)
+                 logger -t upssched-cmd "The UPS is ONLINE"
+                  ;;
+        timeonbatt)
+                 logger -t upssched-cmd "The UPS is shuting down rack"
+                  ;;
+        timeonline)
+                 logger -t upssched-cmd "The UPS is back online but rack was already shutdown, wakeing rack"
+                  ;;
+        *)
+                 logger -t upssched-cmd "Unrecognized command: $1"
+                  ;;
+ esac
+ 
