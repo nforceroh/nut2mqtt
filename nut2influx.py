@@ -11,7 +11,7 @@ import traceback
 
 from pprint import pprint
 from nut2 import PyNUTClient
-from influxdb_client import InfluxDBClient, Point, WriteOptions
+from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 from datetime import datetime
 from time import sleep
@@ -92,9 +92,13 @@ def extractDatapoints(ups_name, UPS_var, varsToExtract: Mapping[str, type],):
 def uploadToInflux(config, data):  # Main upload
 
     client = InfluxDBClient(
-        url=config['influx']['url'], token=config['influx']['token'], org=config['influx']['org'])
+        url=config['influx']['url'], token=config['influx']['token'], org=config['influx']['org'], debug=True)
+    
     if client and debug:
         logging.debug("influx: online")
+        for _, logger in client.conf.loggers.items():
+            logger.setLevel(logging.DEBUG)
+            logger.addHandler(logging.StreamHandler(sys.stdout))
 
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
@@ -153,6 +157,7 @@ if __name__ == '__main__':
     logging.basicConfig(stream = sys.stdout, level=logging.WARNING,
                         format="[%(levelname)s] %(message)s")
     if args.debug:
+        debug=True
         # Print DEBUG messages to the console.
         logging.basicConfig(level=logging.WARNING,
                         format="[%(levelname)s] %(message)s")
