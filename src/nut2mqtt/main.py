@@ -1,41 +1,52 @@
-#!/usr/bin/env python3
-# 
-
-import json
-import socket
 import os
-import collections.abc
-import sys
+import time
 import logging
-import traceback
+import sys
+import uuid
+import json
 
+import paho.mqtt.client as mqtt
 from pprint import pprint
 from nut2 import PyNUTClient
-from influxdb_client import InfluxDBClient, Point, WritePrecision
-from influxdb_client.client.write_api import SYNCHRONOUS
 from datetime import datetime
 from time import sleep
 from typing import Tuple, Mapping, Iterable
 
+
+MQTT_PUB_ROOT = os.getenv("MQTT_PUB_ROOT", "UPS")
+MQTT_CLIENTID = os.getenv("MQTT_CLIENTID", f'paho-mqtt-python/issue72/' + str(uuid.uuid4())
+MQTT_HOST = os.getenv("MQTT_HOST", "")
+MQTT_PORT = os.getenv("MQTT_PORT", "1883")
+MQTT_USER = os.getenv("MQTT_USER", "")
+MQTT_PASS = os.getenv("MQTT_PASS", "")
+MQTT_KEEPALIVE = os.getenv("MQTT_KEEPALIVE", "60")
+
 debug = False
+
+logger = logging.getLogger('')
+logger.setLevel(logging.DEBUG)
+sh = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s [%(filename)s.%(funcName)s:%(lineno)d] %(message)s', datefmt='%a, %d %b %Y %H:%M:%S')
+sh.setFormatter(formatter)
+logger.addHandler(sh)
 
 
 DEFAULT_CONFIG = {
+    "debug": True,
     "nut": {
-        "interval": 30,
-        "host": "localhost",
-        "port": 3493,
-        "creds": None,
-        "vars": {}
+        "config": {
+            "interval": 30,
+            "host": "localhost",
+            "port": 3493,
+            "creds": None,
+            "values": {}
+        }
     },
     "influx": {
         "host": "https://localhost:8086",
         "token": None,
         "org": "myorg",
-        "bucket": "mybucket",
-        "influx_tags": {
-            "ups": "E5130_A"
-        }
+        "bucket": "mybucket"
     }
 }
 
@@ -47,10 +58,8 @@ CONFIG_TYPES = {
     'bool': bool
 }
 
-
 class RequestError(Exception):
     pass
-
 
 def _recursive_update(d: Mapping, u: Mapping):
     """
@@ -66,7 +75,6 @@ def _recursive_update(d: Mapping, u: Mapping):
         else:
             d[k] = u[k]
     return d
-
 
 def extractDatapoints(ups_name, UPS_var, varsToExtract: Mapping[str, type],):
     tags = {"ups": ups_name}
@@ -103,6 +111,7 @@ def uploadToInflux(config, data):  # Main upload
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     for UPS in data:
+        logging.debug(json.dumps(data, indent=4))
         dp = extractDatapoints(UPS, data[UPS], config['nut']['vars'])
 
         logging.debug(
@@ -113,7 +122,18 @@ def uploadToInflux(config, data):  # Main upload
                             org=config['influx']['org'], record=[dp])
         except:
             tb = traceback.format_exc()
+            if debug:
+                print(tb)
+
     client.close()
+
+def mqtt_publish(data):
+
+    logger.debug("Write points: {0}".format(data))
+    client = mqtt.Client(client_id="metar", clean_session=None, userdata=None, transport="tcp", reconnect_on_failure=True)  # create new instance
+    client.connect(host=MQTT_HOST, port=int(MQTT_PORT))  # connect to broker
+    client.publish(MQTT_PUB_ROOT, payload=json.dumps(data))  # publish
+
 
 def LoadConfig(file):
     new_config = DEFAULT_CONFIG.copy()
@@ -130,13 +150,13 @@ def LoadConfig(file):
 
 
 def ConnectToNut(config):
-    nutcfg = config['nut']
+    nutcfg = config['nut']['config']
     username = nutcfg['creds'][0] if nutcfg['creds'] is not None else None
     password = nutcfg['creds'][1] if nutcfg['creds'] is not None else None
     port = nutcfg['port'] if nutcfg['port'] is not None else None
     try:
         nut = PyNUTClient(nutcfg['host'], port=port,
-                          login=username, password=password, debug=debug)
+                          login=username, password=password, debug=config['debug'])
     except:
         logging.debug("Can't connect to %s" % nutcfg['host'])
         return None
@@ -145,15 +165,8 @@ def ConnectToNut(config):
 
 
 if __name__ == '__main__':
-    import argparse
-
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--config', help='config file')
-    p.add_argument('--debug', help='Debugging')
-    args = p.parse_args()
     config = LoadConfig(args.config)
-
-    interval = config['nut']["interval"]
+    interval = config['nut']['config']["interval"]
     logging.basicConfig(stream = sys.stdout, level=logging.WARNING,
                         format="[%(levelname)s] %(message)s")
     if args.debug:
@@ -185,7 +198,7 @@ if __name__ == '__main__':
                 except:
                     logging.debug('UPS {} is having issues'.format(host))
 
-            uploadToInflux(config, data)
+#            uploadToInflux(config, data)
 
         else:
             logging.debug("Can't connect to UPS host")
