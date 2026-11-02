@@ -6,8 +6,8 @@ ARG	BASE_IMAGE
 
 LABEL \
   org.label-schema.build-date=$BUILD_DATE \
-  org.label-schema.name="k3s-nut2influxdb" \
-  org.label-schema.description="nut2influxdb docker container on alpine linux" \
+  org.label-schema.name="k3s-nut2mqtt" \
+  org.label-schema.description="nut2mqtt docker container on alpine linux" \
   org.label-schema.url="https://github.com/nforceroh/nut2influxdb" \
   org.label-schema.vcs-ref=$VCS_REF \
   org.label-schema.vcs-url="https://github.com/nforceroh/nut2influxdb" \
@@ -18,7 +18,8 @@ LABEL \
 ENV PYTHONUNBUFFERED=true
 
 WORKDIR /app
-COPY src/* /app
-RUN pip install --no-cache-dir -r requirements.txt
+COPY src/ /app/
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-CMD [ "python", "/app/app.py" ]
+CMD [ "python", "/app/main.py" ]
