@@ -1,2 +1,3 @@
-paho-mqtt
-nut2
+# Direct dependencies.
+paho-mqtt==2.1.0
+nut2==2.1.1

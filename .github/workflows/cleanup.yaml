@@ -1,0 +1,22 @@
+# managed by nforceroh/.github/.github/workflows/image-build.yaml@v1
+name: cleanup
+
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview deletions only
+        type: boolean
+        default: true
+
+jobs:
+  prune:
+    uses: nforceroh/.github/.github/workflows/image-cleanup.yaml@v1
+    permissions:
+      contents: read
+      packages: write
+    with:
+      # workflow_dispatch defaults to a preview; anything else really prunes.
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
