@@ -22,3 +22,6 @@ jobs:
       packages: write
       attestations: write
       id-token: write
+    with:
+      # GitHub does not support attestations for user-owned private repos.
+      provenance: false
