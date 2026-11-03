@@ -18,6 +18,13 @@ services:
 
 Copy `.env.example` to `.env` and fill it in. `.env` is gitignored.
 
+The container only makes outbound connections to NUT and MQTT; it does not
+need any published ports. For a direct Docker run:
+
+```sh
+docker run --rm --env-file .env ghcr.io/nforceroh/nut2mqtt:latest
+```
+
 ## Configuration
 
 | Variable | Default | Description |
